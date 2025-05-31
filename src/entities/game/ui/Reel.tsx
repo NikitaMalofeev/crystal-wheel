@@ -13,10 +13,10 @@ interface ReelProps {
 }
 
 const SYMBOL_URLS = [
-  'symbols/symbo1.png.jpg',
-  'symbols/symbo2.png.png',
-  'symbols/symbo3.png.png',
-  'symbols/symbo4.png.png',
+  'symbols/symbo1.png',
+  'symbols/symbo2.png',
+  'symbols/symbo3.png',
+  'symbols/symbo4.png',
   'symbols/symbo5.png',
   'symbols/symbo6.png',
   'symbols/symbo7.png',
@@ -30,75 +30,89 @@ const ANGLE_PER_SYMBOL = (2 * Math.PI) / SYMBOLS_COUNT;
 const ROTATION_MULTIPLIER = 8;
 const OVERSHOOT_ANGLE = Math.PI / 3;
 const INITIAL_OFFSET = -Math.PI / 2;
+const SYMBOL_OFFSET_FACTOR = 0.95; // Смещение символов к центру
 
 const Indicator: React.FC<{ isSpinning: boolean }> = ({ isSpinning }) => {
   const arrowRef = useRef<any>(null);
+  const arrowTipRef = useRef<any>(null);
 
   useEffect(() => {
-    if (isSpinning && arrowRef.current) {
-      gsap.to(arrowRef.current, {
-        rotation: -0.3,
-        duration: 0.3,
-        ease: "power1.out"
+    if (isSpinning && arrowRef.current && arrowTipRef.current) {
+      // Анимация наклона кончика стрелки
+      gsap.to(arrowTipRef.current, {
+        rotation: -0.6, // ~35 градусов
+        duration: 0.5,
+        ease: "power2.out"
       });
-
-      gsap.to(arrowRef.current, {
-        rotation: -0.1,
-        duration: 0.2,
-        ease: "elastic.out(1, 0.3)",
-        delay: 0.3,
-        repeat: -1,
-        yoyo: true
-      });
-    } else if (arrowRef.current) {
-      gsap.to(arrowRef.current, {
+    } else if (arrowRef.current && arrowTipRef.current) {
+      // Возврат стрелки в исходное положение
+      gsap.to(arrowTipRef.current, {
         rotation: 0,
         duration: 0.5,
-        ease: "elastic.out(1, 0.3)"
+        ease: "elastic.out(1, 0.5)"
       });
     }
   }, [isSpinning]);
 
   return (
-    <Container ref={arrowRef}>
+    <Container ref={arrowRef} y={-REEL_RADIUS - 75}>
       <Graphics
         draw={g => {
           g.clear();
           
-          // Внешняя тень
-          g.beginFill(0x000000, 0.3);
-          g.moveTo(-20, 5);
-          g.lineTo(20, 5);
-          g.lineTo(0, 35);
-          g.lineTo(-20, 5);
-          g.endFill();
-
-          // Основная стрелка
-          g.beginFill(0xff0000);
+          // Основание стрелки (неподвижная часть)
+          g.lineStyle(3, 0x2c3e50);
+          g.beginFill(0xe74c3c);
           g.moveTo(-15, 0);
           g.lineTo(15, 0);
-          g.lineTo(0, 30);
+          g.lineTo(15, 20);
+          g.lineTo(-15, 20);
           g.lineTo(-15, 0);
           g.endFill();
 
-          // Блик
-          g.beginFill(0xff5555);
-          g.moveTo(-8, 4);
-          g.lineTo(8, 4);
-          g.lineTo(0, 15);
-          g.lineTo(-8, 4);
+          // Блик на основании
+          g.beginFill(0xff6b6b, 0.5);
+          g.moveTo(-12, 3);
+          g.lineTo(12, 3);
+          g.lineTo(12, 10);
+          g.lineTo(-12, 10);
+          g.lineTo(-12, 3);
           g.endFill();
-
-          // Обводка
-          g.lineStyle(2, 0x000000, 1);
-          g.moveTo(-15, 0);
-          g.lineTo(15, 0);
-          g.lineTo(0, 30);
-          g.lineTo(-15, 0);
         }}
-        x={0}
-        y={-REEL_RADIUS - 25}
       />
+      
+      <Container ref={arrowTipRef} y={20}>
+        <Graphics
+          draw={g => {
+            g.clear();
+            
+            // Тень кончика
+            g.beginFill(0x000000, 0.2);
+            g.moveTo(-18, 2);
+            g.lineTo(18, 2);
+            g.lineTo(0, 42);
+            g.lineTo(-18, 2);
+            g.endFill();
+
+            // Кончик стрелки
+            g.lineStyle(3, 0x2c3e50);
+            g.beginFill(0xe74c3c);
+            g.moveTo(-15, 0);
+            g.lineTo(15, 0);
+            g.lineTo(0, 40);
+            g.lineTo(-15, 0);
+            g.endFill();
+
+            // Блик на кончике
+            g.beginFill(0xff6b6b, 0.5);
+            g.moveTo(-8, 5);
+            g.lineTo(8, 5);
+            g.lineTo(0, 25);
+            g.lineTo(-8, 5);
+            g.endFill();
+          }}
+        />
+      </Container>
     </Container>
   );
 };
@@ -246,8 +260,8 @@ export const Reel: React.FC<ReelProps> = ({
       <Container ref={containerRef} rotation={currentRotation}>
         {textures.map((texture, i) => {
           const angle = i * ANGLE_PER_SYMBOL;
-          const x = Math.cos(angle) * REEL_RADIUS;
-          const y = Math.sin(angle) * REEL_RADIUS;
+          const x = Math.cos(angle) * (REEL_RADIUS * SYMBOL_OFFSET_FACTOR);
+          const y = Math.sin(angle) * (REEL_RADIUS * SYMBOL_OFFSET_FACTOR);
           
           return (
             <Sprite

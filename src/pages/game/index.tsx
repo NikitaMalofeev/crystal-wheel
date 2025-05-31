@@ -8,20 +8,8 @@ import { Reel } from '@entities/game/ui/Reel';
 import styles from './styles.module.scss';
 
 const REEL_WIDTH = 800;
-const REEL_HEIGHT = 1000; // Увеличиваем высоту канваса
-const VERTICAL_OFFSET = 450; // Увеличили смещение на 200px (было 250)
-
-// Функция для получения правильного расширения файла
-const getSymbolPath = (symbolId: number): string => {
-  const symbolNumber = symbolId + 1;
-  if (symbolNumber === 1) {
-    return `symbols/symbo${symbolNumber}.png.jpg`;
-  } else if (symbolNumber <= 4) {
-    return `symbols/symbo${symbolNumber}.png.png`;
-  } else {
-    return `symbols/symbo${symbolNumber}.png`;
-  }
-};
+const REEL_HEIGHT = 1000; 
+const VERTICAL_OFFSET = 450; 
 
 export const GamePage: React.FC = () => {
   const dispatch = useDispatch();
@@ -42,7 +30,6 @@ export const GamePage: React.FC = () => {
   const handleWinReveal = (symbolId: number) => {
     setWinningSymbolId(symbolId);
     setShowWinPopup(true);
-    // Скрываем попап через 3 секунды
     setTimeout(() => {
       setShowWinPopup(false);
     }, 3000);
@@ -82,7 +69,7 @@ export const GamePage: React.FC = () => {
       {showWinPopup && winningSymbolId !== null && (
         <div className={`${styles.winPopup} ${styles.visible}`}>
           <img 
-            src={getSymbolPath(winningSymbolId)}
+            src={`symbols/symbo${winningSymbolId + 1}.png`}
             alt={`Symbol ${winningSymbolId + 1}`} 
           />
           <h2>Поздравляем!</h2>
