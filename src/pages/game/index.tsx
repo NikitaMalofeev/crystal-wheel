@@ -1,39 +1,45 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Stage, Container } from '@pixi/react';
 import { Application } from 'pixi.js';
 import { RootState } from '@app/store';
-import { spinReels } from '@entities/game/model/slice';
+import { startSpin, completeSpin, showWin, hideWin } from '@entities/game/model/slice';
 import { Reel } from '@entities/game/ui/Reel';
 import styles from './styles.module.scss';
 
 const REEL_WIDTH = 800;
-const REEL_HEIGHT = 1000; 
-const VERTICAL_OFFSET = 450; 
+const REEL_HEIGHT = 1000;
+const VERTICAL_OFFSET = 450;
 
 export const GamePage: React.FC = () => {
   const dispatch = useDispatch();
-  const { isSpinning, spinResult } = useSelector((state: RootState) => state.game);
+  const { 
+    isSpinning, 
+    spinResult, 
+    showWinPopup, 
+    winningSymbolId,
+    spinDuration,
+    isAnimationComplete 
+  } = useSelector((state: RootState) => state.game);
+  
   const stageRef = useRef<Application>(null);
-  const [showWinPopup, setShowWinPopup] = useState(false);
-  const [winningSymbolId, setWinningSymbolId] = useState<number | null>(null);
 
-  const handleReelComplete = () => {
-    // Колесо остановилось
-  };
+  const handleReelComplete = useCallback(() => {
+    dispatch(completeSpin());
+  }, [dispatch]);
 
-  const handleSpin = () => {
-    setShowWinPopup(false);
-    dispatch(spinReels());
-  };
+  const handleSpin = useCallback(() => {
+    if (!isSpinning && isAnimationComplete) {
+      dispatch(startSpin());
+    }
+  }, [dispatch, isSpinning, isAnimationComplete]);
 
-  const handleWinReveal = (symbolId: number) => {
-    setWinningSymbolId(symbolId);
-    setShowWinPopup(true);
+  const handleWinReveal = useCallback((symbolId: number) => {
+    dispatch(showWin(symbolId));
     setTimeout(() => {
-      setShowWinPopup(false);
+      dispatch(hideWin());
     }, 3000);
-  };
+  }, [dispatch]);
 
   return (
     <div className={styles.gameContainer}>
@@ -43,7 +49,9 @@ export const GamePage: React.FC = () => {
         options={{ 
           backgroundColor: 0x1099bb,
           resolution: window.devicePixelRatio || 1,
-          antialias: true
+          antialias: true,
+          autoDensity: true,
+          powerPreference: 'high-performance'
         }}
       >
         <Container x={REEL_WIDTH / 2} y={REEL_HEIGHT / 2 - VERTICAL_OFFSET}>
@@ -51,7 +59,7 @@ export const GamePage: React.FC = () => {
             index={0}
             isSpinning={isSpinning}
             onComplete={handleReelComplete}
-            spinDuration={5}
+            spinDuration={spinDuration}
             targetSymbolId={spinResult}
             onWinReveal={handleWinReveal}
           />
@@ -61,7 +69,7 @@ export const GamePage: React.FC = () => {
       <button 
         className={styles.spinButton}
         onClick={handleSpin}
-        disabled={isSpinning}
+        disabled={isSpinning || !isAnimationComplete}
       >
         {isSpinning ? 'Вращение...' : 'Крутить'}
       </button>
