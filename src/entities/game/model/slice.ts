@@ -1,45 +1,111 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import axios from 'axios';
 
 export interface GameState {
   isSpinning: boolean;
   spinResult: number | null;
-  error: string | null;
+  showWinPopup: boolean;
+  winningSymbolId: number | null;
+  spinDuration: number;
+  isAnimationComplete: boolean;
 }
 
 const initialState: GameState = {
   isSpinning: false,
   spinResult: null,
-  error: null,
+  showWinPopup: false,
+  winningSymbolId: null,
+  spinDuration: 5,
+  isAnimationComplete: true
 };
 
-export const spinReels = createAsyncThunk(
-  'game/spin',
+export const SYMBOL_URLS = [
+  '/symbols/symbol1.png',
+  '/symbols/symbol2.png',
+  '/symbols/symbol3.png',
+  '/symbols/symbol4.png',
+  '/symbols/symbol5.png',
+  '/symbols/symbol6.png',
+  '/symbols/symbol7.png',
+  '/symbols/symbol8.png',
+];
+
+export const fetchSpinResult = createAsyncThunk(
+  'game/fetchSpinResult',
   async () => {
-    const response = await fetch('http://localhost:3001/api/spin');
-    const data = await response.json();
-    return data.result;
+    try {
+      const response = await axios.get('http://localhost:3001/api/spin');
+      console.log('Server response:', response.data);
+      
+      // Проверяем, что symbolId в допустимом диапазоне
+      const symbolId = response.data.symbolId;
+      if (symbolId === undefined || symbolId === null) {
+        console.error('Server returned invalid symbolId:', symbolId);
+        return Math.floor(Math.random() * SYMBOL_URLS.length);
+      }
+      
+      // Убеждаемся, что symbolId в пределах массива картинок
+      const validSymbolId = Math.max(0, Math.min(symbolId, SYMBOL_URLS.length - 1));
+      if (validSymbolId !== symbolId) {
+        console.warn('Server returned out of range symbolId:', symbolId, 'using:', validSymbolId);
+      }
+      
+      return validSymbolId;
+    } catch (err) {
+      console.error('Error fetching spin result:', err);
+      return Math.floor(Math.random() * SYMBOL_URLS.length);
+    }
   }
 );
 
-const gameSlice = createSlice({
+export const gameSlice = createSlice({
   name: 'game',
   initialState,
-  reducers: {},
+  reducers: {
+    startSpin: (state: GameState) => {
+      if (!state.isSpinning && state.isAnimationComplete) {
+        state.isAnimationComplete = false;
+      }
+    },
+    completeSpin: (state: GameState) => {
+      state.isSpinning = false;
+      state.isAnimationComplete = true;
+    },
+    showWin: (state: GameState, action: PayloadAction<number>) => {
+      // Проверяем, что индекс в допустимом диапазоне
+      const symbolId = Math.max(0, Math.min(action.payload, SYMBOL_URLS.length - 1));
+      state.winningSymbolId = symbolId;
+      state.showWinPopup = true;
+    },
+    hideWin: (state: GameState) => {
+      state.showWinPopup = false;
+      state.winningSymbolId = null;
+    },
+    setSpinDuration: (state: GameState, action: PayloadAction<number>) => {
+      state.spinDuration = action.payload;
+    }
+  },
   extraReducers: (builder) => {
     builder
-      .addCase(spinReels.pending, (state) => {
-        state.isSpinning = true;
-        state.error = null;
+      .addCase(fetchSpinResult.pending, (state: GameState) => {
+        state.spinResult = null;
+        state.showWinPopup = false;
+        state.winningSymbolId = null;
       })
-      .addCase(spinReels.fulfilled, (state, action) => {
-        state.isSpinning = false;
+      .addCase(fetchSpinResult.fulfilled, (state: GameState, action: PayloadAction<number>) => {
+        console.log('Setting spin result:', action.payload);
         state.spinResult = action.payload;
-      })
-      .addCase(spinReels.rejected, (state, action) => {
-        state.isSpinning = false;
-        state.error = action.error.message || 'Произошла ошибка';
+        state.isSpinning = true;
       });
   },
 });
 
-export const gameReducer = gameSlice.reducer; 
+export const { 
+  startSpin, 
+  completeSpin, 
+  showWin, 
+  hideWin,
+  setSpinDuration 
+} = gameSlice.actions;
+
+export default gameSlice.reducer; 
