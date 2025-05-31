@@ -2,6 +2,9 @@ import React, { useRef, useEffect, useState, useCallback, memo } from 'react';
 import { Container, Sprite, Graphics } from '@pixi/react';
 import { Texture, SCALE_MODES, Graphics as PixiGraphics } from 'pixi.js';
 import { gsap } from 'gsap';
+import { useSelector } from 'react-redux';
+import { RootState } from '@app/store';
+import { SYMBOL_URLS } from '@entities/game/model/slice';
 
 interface ReelProps {
   index: number;
@@ -12,20 +15,9 @@ interface ReelProps {
   onWinReveal: (symbolId: number) => void;
 }
 
-const SYMBOL_URLS = [
-  'symbols/symbo1.png',
-  'symbols/symbo2.png',
-  'symbols/symbo3.png',
-  'symbols/symbo4.png',
-  'symbols/symbo5.png',
-  'symbols/symbo6.png',
-  'symbols/symbo7.png',
-  'symbols/symbo8.png',
-];
-
 const REEL_RADIUS = 150;
 const SYMBOL_SIZE = 70;
-const SYMBOLS_COUNT = 8;
+const SYMBOLS_COUNT = SYMBOL_URLS.length;
 const ANGLE_PER_SYMBOL = (2 * Math.PI) / SYMBOLS_COUNT;
 const ROTATION_MULTIPLIER = 8;
 const OVERSHOOT_ANGLE = Math.PI / 3;
@@ -70,34 +62,13 @@ const Indicator = memo<{ isSpinning: boolean }>(({ isSpinning }) => {
   }, [isSpinning]);
 
   return (
-    <Container ref={arrowRef} y={-REEL_RADIUS - 75}>
-      <Graphics
-        draw={useCallback((g: PixiGraphics) => {
-          g.clear();
-          g.lineStyle(3, 0x2c3e50);
-          g.beginFill(0xe74c3c);
-          g.moveTo(-15, 0);
-          g.lineTo(15, 0);
-          g.lineTo(15, 20);
-          g.lineTo(-15, 20);
-          g.lineTo(-15, 0);
-          g.endFill();
-
-          g.beginFill(0xff6b6b, 0.5);
-          g.moveTo(-12, 3);
-          g.lineTo(12, 3);
-          g.lineTo(12, 10);
-          g.lineTo(-12, 10);
-          g.lineTo(-12, 3);
-          g.endFill();
-        }, [])}
-      />
-      
-      <Container ref={arrowTipRef} y={20}>
+    <Container ref={arrowRef} y={-REEL_RADIUS - 65}>
+      <Container ref={arrowTipRef}>
         <Graphics
           draw={useCallback((g: PixiGraphics) => {
             g.clear();
             
+            // Тень
             g.beginFill(0x000000, 0.2);
             g.moveTo(-18, 2);
             g.lineTo(18, 2);
@@ -105,6 +76,7 @@ const Indicator = memo<{ isSpinning: boolean }>(({ isSpinning }) => {
             g.lineTo(-18, 2);
             g.endFill();
 
+            // Основная часть стрелки
             g.lineStyle(3, 0x2c3e50);
             g.beginFill(0xe74c3c);
             g.moveTo(-15, 0);
@@ -113,6 +85,7 @@ const Indicator = memo<{ isSpinning: boolean }>(({ isSpinning }) => {
             g.lineTo(-15, 0);
             g.endFill();
 
+            // Блик
             g.beginFill(0xff6b6b, 0.5);
             g.moveTo(-8, 5);
             g.lineTo(8, 5);
@@ -219,6 +192,7 @@ export const Reel = memo<ReelProps>(({
   useEffect(() => {
     const loadTextures = async () => {
       try {
+        console.log('Loading textures from URLs:', SYMBOL_URLS);
         const loadedTextures = await Promise.all(
           SYMBOL_URLS.map(url => {
             const texture = Texture.from(url);
@@ -226,10 +200,11 @@ export const Reel = memo<ReelProps>(({
             return texture;
           })
         );
+        console.log('Textures loaded successfully:', loadedTextures.length);
         setTextures(loadedTextures);
       } catch (err) {
-        setError('Failed to load textures');
         console.error('Error loading textures:', err);
+        setError('Failed to load textures');
       }
     };
 
@@ -238,6 +213,8 @@ export const Reel = memo<ReelProps>(({
 
   useEffect(() => {
     if (isSpinning && containerRef.current && targetSymbolId !== null) {
+      console.log('Starting spin animation with targetSymbolId:', targetSymbolId);
+      
       if (animationRef.current) {
         animationRef.current.kill();
       }
@@ -251,11 +228,19 @@ export const Reel = memo<ReelProps>(({
       const fullRotations = ROTATION_MULTIPLIER * 2 * Math.PI;
       const totalRotation = fullRotations + targetRotation;
       
+      console.log('Animation parameters:', {
+        targetRotation,
+        fullRotations,
+        totalRotation,
+        ANGLE_PER_SYMBOL,
+        SYMBOLS_COUNT
+      });
+
       animationRef.current = gsap.timeline({
         onComplete: () => {
           setCurrentRotation(targetRotation);
-          // Добавляем небольшую задержку перед вызовом onComplete
           spinTimeoutRef.current = setTimeout(() => {
+            console.log('Animation complete, revealing symbol:', targetSymbolId);
             onComplete();
             onWinReveal(targetSymbolId);
           }, 100);
@@ -273,7 +258,6 @@ export const Reel = memo<ReelProps>(({
           duration: spinDuration * 0.2,
           ease: "elastic.out(1, 0.5)",
           onStart: () => {
-            // Возвращаем стрелку в исходное положение перед остановкой колеса
             setIsArrowSpinning(false);
           }
         });
@@ -290,6 +274,7 @@ export const Reel = memo<ReelProps>(({
   }, [isSpinning, spinDuration, targetSymbolId, onComplete, onWinReveal]);
 
   if (error) {
+    console.error('Reel error:', error);
     return null;
   }
 
