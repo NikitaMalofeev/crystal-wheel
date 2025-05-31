@@ -126,7 +126,7 @@ const Indicator = memo<{ isSpinning: boolean }>(({ isSpinning }) => {
   );
 });
 
-const WheelDecoration = memo(() => {
+const StaticWheelDecoration = memo(() => {
   return (
     <Graphics
       draw={useCallback((g: PixiGraphics) => {
@@ -146,6 +146,16 @@ const WheelDecoration = memo(() => {
         
         g.lineStyle(5, 0x34495e, 0.6);
         g.drawCircle(0, 0, REEL_RADIUS + 20);
+      }, [])}
+    />
+  );
+});
+
+const RotatingWheelDecoration = memo(() => {
+  return (
+    <Graphics
+      draw={useCallback((g: PixiGraphics) => {
+        g.clear();
         
         for (let i = 0; i < SYMBOLS_COUNT; i++) {
           const angle = i * ANGLE_PER_SYMBOL;
@@ -204,6 +214,7 @@ export const Reel = memo<ReelProps>(({
   const [error, setError] = useState<string | null>(null);
   const spinTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const animationRef = useRef<gsap.core.Timeline | null>(null);
+  const [isArrowSpinning, setIsArrowSpinning] = useState(false);
 
   useEffect(() => {
     const loadTextures = async () => {
@@ -234,6 +245,8 @@ export const Reel = memo<ReelProps>(({
         clearTimeout(spinTimeoutRef.current);
       }
 
+      setIsArrowSpinning(true);
+
       const targetRotation = INITIAL_OFFSET - (targetSymbolId * ANGLE_PER_SYMBOL);
       const fullRotations = ROTATION_MULTIPLIER * 2 * Math.PI;
       const totalRotation = fullRotations + targetRotation;
@@ -258,7 +271,11 @@ export const Reel = memo<ReelProps>(({
         .to(containerRef.current, {
           rotation: totalRotation,
           duration: spinDuration * 0.2,
-          ease: "elastic.out(1, 0.5)"
+          ease: "elastic.out(1, 0.5)",
+          onStart: () => {
+            // Возвращаем стрелку в исходное положение перед остановкой колеса
+            setIsArrowSpinning(false);
+          }
         });
     }
 
@@ -278,9 +295,9 @@ export const Reel = memo<ReelProps>(({
 
   return (
     <Container y={400}>
-      <WheelDecoration />
-      <Indicator isSpinning={isSpinning} />
+      <StaticWheelDecoration />
       <Container ref={containerRef} rotation={currentRotation}>
+        <RotatingWheelDecoration />
         {textures.map((texture, i) => {
           const angle = i * ANGLE_PER_SYMBOL;
           const x = Math.cos(angle) * (REEL_RADIUS * SYMBOL_OFFSET_FACTOR);
@@ -300,10 +317,12 @@ export const Reel = memo<ReelProps>(({
           );
         })}
       </Container>
+      <Indicator isSpinning={isArrowSpinning} />
     </Container>
   );
 });
 
+StaticWheelDecoration.displayName = 'StaticWheelDecoration';
+RotatingWheelDecoration.displayName = 'RotatingWheelDecoration';
 Indicator.displayName = 'Indicator';
-WheelDecoration.displayName = 'WheelDecoration';
 Reel.displayName = 'Reel'; 
