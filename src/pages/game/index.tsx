@@ -11,6 +11,18 @@ const REEL_WIDTH = 800;
 const REEL_HEIGHT = 1000; // Увеличиваем высоту канваса
 const VERTICAL_OFFSET = 450; // Увеличили смещение на 200px (было 250)
 
+// Функция для получения правильного расширения файла
+const getSymbolPath = (symbolId: number): string => {
+  const symbolNumber = symbolId + 1;
+  if (symbolNumber === 1) {
+    return `symbols/symbo${symbolNumber}.png.jpg`;
+  } else if (symbolNumber <= 4) {
+    return `symbols/symbo${symbolNumber}.png.png`;
+  } else {
+    return `symbols/symbo${symbolNumber}.png`;
+  }
+};
+
 export const GamePage: React.FC = () => {
   const dispatch = useDispatch();
   const { isSpinning, spinResult } = useSelector((state: RootState) => state.game);
@@ -70,7 +82,7 @@ export const GamePage: React.FC = () => {
       {showWinPopup && winningSymbolId !== null && (
         <div className={`${styles.winPopup} ${styles.visible}`}>
           <img 
-            src={`symbols/symbo${winningSymbolId + 1}${winningSymbolId < 5 ? '.png.jpg' : '.jpg'}`} 
+            src={getSymbolPath(winningSymbolId)}
             alt={`Symbol ${winningSymbolId + 1}`} 
           />
           <h2>Поздравляем!</h2>
